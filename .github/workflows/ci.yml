@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# The job only ever reads the checkout; nothing here writes to the repo,
+# publishes a package or comments on a PR.
+permissions:
+  contents: read
+
+# A second push to the same branch makes the first run's answer stale.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Both versions `requires-python` accepts. Classifying 3.14 while
+        # running only 3.13 promises support nothing has ever executed.
+        python-version: ["3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package with dev dependencies
+        run: pip install -e ".[dev]"
+
+      - name: Lint
+        run: ruff check rl_cli/ tests/
+
+      - name: Format check
+        run: ruff format --check rl_cli/ tests/
+
+      # tests/ is checked too: the suite is what asserts the package's
+      # behaviour, so a test calling a service with the wrong argument type
+      # is the same defect as the service having it.
+      - name: Type check
+        run: mypy rl_cli/ tests/
+
+      - name: Security scan
+        run: bandit -r rl_cli/ -q
+
+      - name: Dependency audit
+        run: pip-audit --skip-editable
+
+      # Sections 1-6 only: credentials, malware samples and a tracked
+      # .gitignore, none of which the steps above look at. Its section 7 is
+      # the six checks this job already ran as its own steps, so the
+      # script skips it when $CI is set rather than paying for all six a
+      # second time with the output thrown away.
+      - name: Secret and sample scan
+        run: bash pre-push-check.sh
+
+      # No coverage flags: the floor is in pyproject's addopts, so this is
+      # the same command the README and the pre-push hook name, and "it
+      # passed on my machine" and "it passed in CI" mean the same thing.
+      - name: Tests
+        run: pytest -q

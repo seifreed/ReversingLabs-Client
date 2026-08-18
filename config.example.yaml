@@ -1,0 +1,41 @@
+# ReversingLabs CLI Configuration Example
+# Copy this file to config.yaml (or ~/.rl-cli.yaml) and fill in your values.
+#
+# Profiles are top-level keys. The CLI loads the "default" profile unless
+# you pass --profile <name>. Unknown keys are ignored.
+
+default:
+  # TitaniumCloud API (username/password authentication)
+  titanium_cloud:
+    host: "https://data.reversinglabs.com"
+    username: "your_ticloud_username"
+    password: "your_ticloud_password"
+    verify_ssl: true
+    # proxy: "http://proxy.example.com:8080"
+    # timeout: 300
+    # user_agent: "RL-CLI/0.1.0"
+
+  # A1000 / Spectra Analyze appliance
+  a1000:
+    host: "https://your-a1000-instance.local"
+    # Token authentication (recommended)
+    token: "your_a1000_api_token_here"
+    # OR username/password authentication
+    # username: "your_username"
+    # password: "your_password"
+    verify_ssl: true
+    # proxy: "http://proxy.example.com:8080"
+    # timeout: 300
+
+  # Output defaults
+  output:
+    format: "rich" # rich, json, yaml, table, raw, toon, sarif
+    color: true
+    verbose: false
+    quiet: false
+
+# Additional profiles use the same structure:
+# staging:
+#   a1000:
+#     host: "https://staging-a1000.local"
+#     token: "your_staging_token"

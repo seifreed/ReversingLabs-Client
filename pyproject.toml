@@ -1,0 +1,325 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "rl-cli"
+version = "0.1.0"
+description = "A modular CLI client for ReversingLabs services with rich output formatting"
+readme = "README.md"
+requires-python = ">=3.13,<3.15"
+license = {text = "MIT"}
+authors = [
+    {name = "Marc Rivero", email = "mriverolopez@gmail.com"}
+]
+keywords = ["reversinglabs", "malware-analysis", "threat-intelligence", "cli", "security"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Security",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+
+# Every runtime floor carries a major-version ceiling. A bare floor says
+# nothing about what a user gets: on one machine, in one hour, this venv
+# and a fresh `pip install -e ".[dev]"` resolved rich 14.1.0 vs 15.0.0 (a
+# whole major, and rich is the entire output layer), tabulate 0.9.0 vs
+# 0.10.0, pydantic 2.11.7 vs 2.13.4 and pydantic-settings 2.10.1 vs
+# 2.15.0. The suite passed on both, so "it passed on my machine" was
+# vouching for a dependency set no user would install. This is the same
+# argument that pinned the four gate tools exactly, applied to the
+# dependencies the shipped package actually runs on.
+#
+# Ceilings are major-only: a patch or minor upgrade still resolves
+# freely, so a security fix is never blocked. The one exception is the
+# SDK, which deletes public API in MINOR releases -- see below.
+#
+# Follow-up (deliberately not in this change, it is a workflow change):
+# a lockfile / constraints.txt would pin the exact resolved set for CI
+# and for reproducing a user's report, which ranges cannot do.
+dependencies = [
+    # Floor 2.14.0, not 2.11.0. services/titanium_cloud/network.py passes
+    # `private=` to URLThreatIntelligence.get_url_report,
+    # get_downloaded_files and get_downloaded_files_aggregated. That
+    # parameter does not exist before 2.14.0 -- 2.13.0 still declares
+    # `def get_url_report(self, url_input)` -- so the old floor was free
+    # to install an SDK that raises TypeError on every URL lookup.
+    #
+    # Ceiling <3 is not boilerplate: this SDK removes public API in minor
+    # bumps. Its CHANGELOG's "v2.12.0 -> Removals" deletes eight a1000
+    # methods and two ticloud classes. An unbounded floor against a
+    # dependency with that habit is a bet, not a constraint.
+    "reversinglabs-sdk-py3>=2.14.0,<3",
+    # IDNA 2008. The stdlib's "idna" codec is IDNA 2003 and folds
+    # `faß.de` to `fass.de` -- a different registration, so a domain
+    # lookup would answer about a domain the analyst never typed. Already
+    # present as a hard dependency of requests; declared because we import
+    # it directly in models/validators.py.
+    #
+    # Floor 3.15, not 3.4: two advisories name the exact call
+    # models/validators.py makes on an argv-supplied domain,
+    # `idna.encode(domain, uts46=True, transitional=False)`.
+    # PYSEC-2024-60 (CVE-2024-3651) is a denial of service on crafted
+    # input, fixed in 3.7; PYSEC-2026-215 (CVE-2026-45409) is the same
+    # bug again because that fix was incomplete, fixed in 3.15.
+    "idna>=3.15,<4",
+    # The SDK already pulls this in; declared because we now import it
+    # directly to bound the timeout-less token POST in A1000.__init__.
+    #
+    # Floor 2.33.0 for PYSEC-2026-2275 (CVE-2026-25645), insecure temp
+    # file reuse in extract_zipped_paths(). Nothing here calls it, so
+    # this is hygiene rather than an exploitable path -- but a floor
+    # below a known-vulnerable release is what pip-audit fails on, and
+    # the declared floor was worse than merely low: it was untrue. Every
+    # SDK release this project can resolve requires requests>=2.32.4, so
+    # `requests>=2.31.0` described a set pip cannot build -- resolving
+    # the declared floors together (sdk==2.11.0 + requests==2.31.0)
+    # returns ResolutionImpossible.
+    "requests>=2.33.0,<3",
+    "rich>=13.7.0,<16",
+    "click>=8.3.3,<9",
+    "pydantic>=2.5.0,<3",
+    # Bounded with pydantic: it is a satellite of that package and reads
+    # its internals, so it cannot outlive pydantic's major.
+    "pydantic-settings>=2.1.0,<3",
+    # Not imported directly: pydantic-settings needs it to read .env files,
+    # which is how credentials can be supplied without a config file.
+    "python-dotenv>=1.2.2,<2",
+    "pyyaml>=6.0.1,<7",
+    "tabulate>=0.9.0,<1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.4.0",
+    "pytest-cov>=4.1.0",
+    # The three gate tools are pinned exactly, not floored. A floor means
+    # CI resolves to whatever released today while a developer's venv
+    # keeps whatever it was created with -- so `ruff>=0.1.0` had CI on
+    # 0.16.2 finding eight violations that 0.12.10 locally could not see,
+    # and main went red for five pushes that each passed the local gate.
+    # For a linter a new release is a behaviour change, so it is upgraded
+    # deliberately in one commit that also fixes what it newly flags.
+    #
+    # Formatting is ruff's too. Depending on black as well meant two
+    # formatters over one tree, each with its own pin and its own
+    # `line-length = 100`: they already disagreed about four files in
+    # tests/, so which one a contributor reached for decided whether the
+    # tree was formatted. `ruff format` is the one that stayed.
+    "ruff==0.16.2",
+    "mypy==2.3.0",
+    "types-PyYAML>=6.0",
+    "types-requests>=2.33.0",
+    "types-tabulate>=0.9",
+    "bandit==1.9.4",
+    "pip-audit>=2.7",
+    # `pre-commit` was installed into every dev venv with no
+    # .pre-commit-config.yaml anywhere in the tree, so `pre-commit
+    # install` -- the only reason to have it -- errored out. It is
+    # dropped rather than given a config: the gate is pre-push-check.sh
+    # behind `core.hooksPath .githooks`, spelled command-for-command as
+    # ci.yml spells it, and a second hook framework would be a second
+    # copy of those commands and a third home for the four exact pins,
+    # each free to drift from CI. That drift is the failure both files'
+    # comments exist to prevent.
+]
+
+[project.scripts]
+rl-cli = "rl_cli.cli.main:main"
+
+[project.urls]
+Homepage = "https://github.com/seifreed/ReversingLabs-Client"
+Documentation = "https://github.com/seifreed/ReversingLabs-Client#readme"
+Repository = "https://github.com/seifreed/ReversingLabs-Client.git"
+Issues = "https://github.com/seifreed/ReversingLabs-Client/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["rl_cli*"]
+exclude = ["tests*", "docs*"]
+
+# PEP 561. rl_cli is annotated throughout under `disallow_untyped_defs`
+# and the README documents importing it as a library -- but without this
+# marker in the wheel, a consumer's mypy ignores every one of those
+# annotations and infers `Any` for the whole package. The inline types
+# are only type information once the distribution says so, and a marker
+# that is not listed here is not in the built wheel.
+[tool.setuptools.package-data]
+rl_cli = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+# The coverage floor belongs to the suite, not to one CI step. Spelled
+# only in ci.yml, a plain `pytest -q` — what the README and the pre-push
+# hook both told contributors to run — passed happily on a change that
+# dropped coverage, and the regression was first heard about from CI.
+#
+# `--cov-branch` because line coverage alone counted 1086 branches as
+# nothing: 98.58% of lines was 97.91% once the 46 half-taken branches
+# were counted, and the files it demotes are the ones with the decisions
+# — services/a1000/network.py 91%, cli/commands/a1000/yara.py 90%,
+# cli/commands/config.py 88%, render/toon.py 93%.
+#
+# The floor is 100 because the suite reaches it: every line and every
+# branch of rl_cli is exercised, so anything less is a line a change
+# stopped covering, named the moment it happens rather than found later.
+# A line that genuinely cannot be reached in-process is covered the way
+# the __main__ guard is -- run as a script through runpy -- or its input
+# is constructed, not waived with a pragma.
+#
+# The floor applies to a whole-suite run only; tests/conftest.py drops it
+# for a single-file or `-k` run, where covering all of rl_cli was never
+# the claim.
+#
+# `--strict-markers` because the availability suite's correctness hangs on
+# one string. conftest.py hands every suite a stubbed probe unless it is
+# marked `real_availability_probe`, so a typo in the single `pytestmark`
+# line in tests/test_availability.py would not fail — it would quietly
+# hand that suite the stub and let 900 lines of claims about the real
+# probe pass having tested the stub. Unregistered now means a collection
+# error rather than a marker that silently marks nothing.
+addopts = "--cov=rl_cli --cov-branch --cov-report=term-missing --cov-fail-under=100 --strict-markers"
+
+# Registered here is what `--strict-markers` checks against.
+markers = [
+    "real_availability_probe: give this test the real APIAvailabilityChecker, not conftest's stub",
+]
+
+# A DeprecationWarning from click, pydantic or the vendored SDK is the
+# notice that a release has changed under us, and it is worth more before
+# the behaviour goes than after. The suite raises none today, so this
+# costs nothing until something starts warning.
+filterwarnings = ["error"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "UP",  # pyupgrade
+    "C90", # mccabe - keep the renderers from growing another branch
+    "N",   # pep8-naming
+    "PTH", # flake8-use-pathlib
+    "PLW", # pylint warnings
+    "RUF", # ruff-specific, incl. RUF100 so a stale suppression is noticed
+    "S",   # flake8-bandit - rl_cli is clean today, and stays that way
+    "SIM", # flake8-simplify
+]
+
+# ARG, PLR, TRY and D were evaluated and left off. Each was measured
+# against this tree rather than assumed, and each fires only on idioms
+# the code is right to have:
+#   ARG  - every hit is a signature-conformance parameter (a click
+#          result_callback's `result`, the no-op bodies of the Notifier
+#          protocol stand-ins, test doubles mirroring an SDK method).
+#          Renaming them to `_x` breaks keyword calls; none is a defect.
+#   PLR  - PLR2004 fires on the literal expectations that *are* the
+#          assertions, and PLR0913 on click commands, which have as many
+#          parameters as they have options.
+#   TRY  - TRY003 fires on this project's `raise ValueError("why")`
+#          idiom; TRY301's one hit is the symlink refusal in
+#          storage/files.py, which must raise inside the try so the
+#          partial file is removed.
+#   D    - 883 hits, 649 of them undocumented test methods.
+
+[tool.ruff.lint.mccabe]
+max-complexity = 10
+
+[tool.ruff.lint.per-file-ignores]
+# Tests assert (S101) against fixture credentials (S105/S106), name
+# addresses and paths that are inputs to a validator rather than
+# anything opened (S104/S108). None of it reaches rl_cli, which is
+# checked with the full S ruleset.
+"tests/**" = ["S101", "S104", "S105", "S106", "S108"]
+# `ℹ` is the info glyph, next to `⚠` and `✓` in the same status line.
+"rl_cli/render/output.py" = ["RUF001"]
+# The reporter for SIGINT and main()'s catch-all: both run outside click
+# with no context to carry it, so a module-level slot is what they reach.
+"rl_cli/cli/main.py" = ["PLW0603"]
+
+[tool.mypy]
+python_version = "3.13"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+# rl_cli passes all six of these today, so each is a floor rather than a
+# project. Notably `warn_unused_ignores`: RUF100 already fails the gate on
+# a stale `# noqa`, and a stale `# type: ignore` was the one suppression
+# nothing looked at. `disallow_incomplete_defs` closes the gap
+# `disallow_untyped_defs` leaves — one annotated parameter made a def
+# count as typed. `disallow_any_generics` is what makes a bare `dict`
+# say what it holds, and `no_implicit_reexport` stops an import in one
+# module becoming another module's public name by accident.
+disallow_incomplete_defs = true
+disallow_untyped_calls = true
+disallow_any_generics = true
+warn_unused_ignores = true
+strict_equality = true
+no_implicit_reexport = true
+
+[[tool.mypy.overrides]]
+module = ["ReversingLabs.*"]
+ignore_missing_imports = true
+
+# The ReversingLabs SDK is untyped, so every service method that returns
+# response.json() would trip warn_return_any despite being correctly annotated.
+[[tool.mypy.overrides]]
+module = "rl_cli.services.*"
+warn_return_any = false
+
+# The one module `no_implicit_reexport` is waived for, and it has to be
+# spelled here rather than on tests.*: mypy reads the knob for the module
+# being imported *from*, so waiving it where the error is reported does
+# nothing. Its `time` is a patch seam — the suite replaces
+# `http_module.time.sleep` to assert poll spacing without waiting — and
+# that is the only name any module reaches through this one.
+[[tool.mypy.overrides]]
+module = "rl_cli.services.http"
+implicit_reexport = true
+
+# Tests are checked, but not required to annotate every `def test_...(self)`.
+# Without this the suite reported 700+ no-untyped-def errors, which is why
+# mypy used to be pointed at rl_cli/ alone — and how a test calling a
+# service with the wrong argument type went unnoticed. Both the CI job and
+# the pre-push hook now run `mypy rl_cli/ tests/`; this section is what
+# makes that scope bearable, so narrowing either back to rl_cli/ makes
+# mypy report it unused.
+#
+# The three relaxations below are the same waiver, not new ones: they only
+# fire *because* a test def may be untyped. A typed test calling an
+# untyped local helper is `no-untyped-call`, and a fixture body's `dict`
+# with no arguments is `type-arg`. Both are about test-local scaffolding,
+# and neither can reach rl_cli, which is checked with all six.
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+disallow_untyped_calls = false
+disallow_any_generics = false
+# Measured, not assumed: without `check_untyped_defs` mypy skips the *body*
+# of every unannotated def -- about 1077 of the suite's ~1500 -- so the
+# scope above only meant what its note claims for the annotated minority.
+# Turning it on reported 36 errors in 12 files: 24 were the
+# `lambda: seen.append(x) or {...}` recording idiom (`append` returns
+# `None`), now statement-bodied doubles that record and return; the other
+# 12 were real -- reading `.help`/`.is_flag` off a `click.Parameter`,
+# calling a subclass method through a `BaseService`-typed name, and three
+# monkeypatch seams reaching a name through the module that imported it
+# rather than the one that defines it. All are fixed, so a test calling a
+# service with the wrong argument type now fails the gate from inside an
+# unannotated body -- which was the whole point of the scope above.
+check_untyped_defs = true

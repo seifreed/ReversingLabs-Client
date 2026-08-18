@@ -1968,7 +1968,7 @@ class TestSampleDownload:
 
         assert service.download_sample(SHA256, link) is False
 
-        assert target.read_text() == "keep me"
+        assert target.read_text(encoding="utf-8") == "keep me"
         assert service.output.error.called
 
     def test_a_status_that_is_neither_success_nor_error_is_named_not_written(

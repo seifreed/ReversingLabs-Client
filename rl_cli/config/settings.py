@@ -30,7 +30,7 @@ def read_config_file(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     try:
-        with path.open() as handle:
+        with path.open(encoding="utf-8") as handle:
             loaded = yaml.safe_load(handle)
     except yaml.YAMLError as exc:
         raise ConfigFileError(f"{path} is not valid YAML: {exc}") from exc

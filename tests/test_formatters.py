@@ -2918,7 +2918,7 @@ class TestNoRendererDecidesTheRunStatus:
     @staticmethod
     def _sources(root: Path) -> list[tuple[str, ast.Module]]:
         return [
-            (str(path.relative_to(_PACKAGE_ROOT)), ast.parse(path.read_text()))
+            (str(path.relative_to(_PACKAGE_ROOT)), ast.parse(path.read_text(encoding="utf-8")))
             for path in sorted(root.rglob("*.py"))
         ]
 

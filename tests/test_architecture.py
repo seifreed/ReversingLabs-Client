@@ -80,7 +80,7 @@ def _imports() -> dict[str, set[str]]:
         # A module that imports nothing still has to appear as a node, or
         # `test_text_is_a_leaf` would pass by not finding it.
         graph.setdefault(module, set())
-        for node in ast.walk(ast.parse(path.read_text())):
+        for node in ast.walk(ast.parse(path.read_text(encoding="utf-8"))):
             if (
                 isinstance(node, ast.ImportFrom)
                 and node.module
@@ -186,7 +186,7 @@ def test_models_and_config_name_no_console_and_no_appliance():
     """
     for layer in ("models", "config"):
         for path in (_ROOT / layer).rglob("*.py"):
-            source = path.read_text()
+            source = path.read_text(encoding="utf-8")
             for node in ast.walk(ast.parse(source)):
                 names = []
                 if isinstance(node, ast.Import):

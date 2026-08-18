@@ -218,7 +218,7 @@ class TestReportOutput:
         out = tmp_path / "report.xml"
         result = invoke(a1000, ["report", SHA256, "-f", "xml", "--output-file", str(out)], ctx_obj)
         assert result.exit_code == 0, result.output
-        assert "ticore" in out.read_text()
+        assert "ticore" in out.read_text(encoding="utf-8")
 
     def test_pdf_report_written_as_bytes(self, ctx_obj, monkeypatch, tmp_path):
         monkeypatch.setattr(
@@ -1512,7 +1512,7 @@ class TestTheReanalysisVerdictIsAModelAndNotARendering:
         """``print_*`` off ``render.formatters`` only: a renderer decides nothing."""
         commands = Path(rl_cli.cli.commands.__file__).parent
         for source in sorted(commands.rglob("*.py")):
-            for line in source.read_text().splitlines():
+            for line in source.read_text(encoding="utf-8").splitlines():
                 assert "from rl_cli.render.formatters." not in line, f"{source.name}: {line}"
 
     def test_the_reasons_it_states_carry_no_markup(self):

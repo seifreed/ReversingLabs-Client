@@ -110,7 +110,7 @@ class TestConfigFileRoundTrip:
 
     def test_example_config_matches_model(self, tmp_path):
         """The shipped config.example.yaml must load without losing keys."""
-        example = yaml.safe_load(CONFIG_EXAMPLE.read_text())
+        example = yaml.safe_load(CONFIG_EXAMPLE.read_text(encoding="utf-8"))
         profile = example["default"]
         settings = _settings(tmp_path)
         for section_name, section_values in profile.items():
@@ -406,7 +406,7 @@ class TestSavedConfigPermissions:
         settings.save_config(target)
 
         assert stat.S_IMODE(target.stat().st_mode) == 0o600
-        assert "supersecret" in target.read_text()
+        assert "supersecret" in target.read_text(encoding="utf-8")
 
     @pytest.mark.posix_only
     def test_existing_world_readable_file_is_tightened(self, tmp_path):
@@ -633,7 +633,10 @@ class TestTheConfigFileIsWrittenAsPrivatelyAsASample:
         path = tmp_path / "config.yaml"
         write_private_yaml(path, {"default": {"a1000": {"token": "secret"}}})
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
-        assert yaml.safe_load(path.read_text())["default"]["a1000"]["token"] == "secret"
+        assert (
+            yaml.safe_load(path.read_text(encoding="utf-8"))["default"]["a1000"]["token"]
+            == "secret"
+        )
 
     @pytest.mark.posix_only
     def test_it_writes_through_a_symlink_to_the_real_file(self, tmp_path):
@@ -653,7 +656,9 @@ class TestTheConfigFileIsWrittenAsPrivatelyAsASample:
         write_private_yaml(link, {"default": {"a1000": {"token": "t"}}})
 
         assert link.is_symlink(), "the link itself must survive"
-        assert yaml.safe_load(target.read_text())["default"]["a1000"]["token"] == "t"
+        assert (
+            yaml.safe_load(target.read_text(encoding="utf-8"))["default"]["a1000"]["token"] == "t"
+        )
         assert stat.S_IMODE(target.stat().st_mode) == 0o600
 
 

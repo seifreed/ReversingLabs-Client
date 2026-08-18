@@ -34,7 +34,7 @@ from rl_cli.services.base import BaseService
 from tests.cli_support import GROUPS, commands_offering_yes, commands_that_ask
 
 README = Path(__file__).resolve().parent.parent / "README.md"
-_TEXT = README.read_text()
+_TEXT = README.read_text(encoding="utf-8")
 
 # Placeholders the README uses in place of real arguments.
 _PLACEHOLDER = re.compile(r"<[^>]+>|SHA256_HASH|/path/to/\S+|rules\.yar")
@@ -365,7 +365,9 @@ def _settings_models() -> list[type[BaseSettings]]:
 
 
 def _documented_variables() -> set[str]:
-    return set(re.findall(r"^#?\s*([A-Z][A-Z0-9_]+)=", ENV_EXAMPLE.read_text(), re.M))
+    return set(
+        re.findall(r"^#?\s*([A-Z][A-Z0-9_]+)=", ENV_EXAMPLE.read_text(encoding="utf-8"), re.M)
+    )
 
 
 def _real_variables() -> set[str]:
@@ -387,7 +389,7 @@ def _uncommented_env_example() -> str:
     """Every variable .env.example documents, with the optional ones enabled."""
     return "".join(
         re.sub(r"^#\s*", "", line) + "\n"
-        for line in ENV_EXAMPLE.read_text().splitlines()
+        for line in ENV_EXAMPLE.read_text(encoding="utf-8").splitlines()
         if re.match(r"^#?\s*[A-Z][A-Z0-9_]+=", line)
     )
 
@@ -438,7 +440,7 @@ def test_config_example_sets_nothing_the_code_ignores() -> None:
 
     from rl_cli.config.settings import Settings
 
-    profile = yaml.safe_load(CONFIG_EXAMPLE.read_text())["default"]
+    profile = yaml.safe_load(CONFIG_EXAMPLE.read_text(encoding="utf-8"))["default"]
     for section, values in profile.items():
         model = Settings.model_fields[section].annotation
         assert _is_section(model), f"config.example.yaml sets an unknown section: {section}"
@@ -463,7 +465,11 @@ def _output_flag_row() -> str:
 
 def _commented_formats(path: Path) -> set[str]:
     """The comma-separated names commented beside an example's format setting."""
-    lines = [line for line in path.read_text().splitlines() if re.search(r"format:|FORMAT=", line)]
+    lines = [
+        line
+        for line in path.read_text(encoding="utf-8").splitlines()
+        if re.search(r"format:|FORMAT=", line)
+    ]
     if not lines:
         return set()
     return {word.strip() for word in lines[0].rpartition("#")[2].split(",") if word.strip()}
@@ -653,7 +659,7 @@ def test_the_sdk_coverage_claim_matches_the_code() -> None:
         if not name.startswith("_")
     }
     source = "\n".join(
-        path.read_text()
+        path.read_text(encoding="utf-8")
         for path in Path(__file__).resolve().parent.parent.joinpath("rl_cli").rglob("*.py")
     )
     wrapped = {m for m in methods if _re.search(rf"\.{_re.escape(m)}\b", source)}

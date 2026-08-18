@@ -167,7 +167,7 @@ class TestTheWritersStillStoreTheRealValues:
         result = CliRunner().invoke(config, ["save"], obj=obj)
 
         assert result.exit_code == 0, result.output
-        written = yaml.safe_load(config_file.read_text())["default"]
+        written = yaml.safe_load(config_file.read_text(encoding="utf-8"))["default"]
         assert written["a1000"]["token"] == CANARY_TOKEN
         assert written["titanium_cloud"]["password"] == CANARY_TC_PASSWORD
         # And the file it landed in is still the owner-only one.
@@ -181,7 +181,7 @@ class TestTheWritersStillStoreTheRealValues:
         result = CliRunner().invoke(config, ["create-profile", "staging"], obj=obj)
 
         assert result.exit_code == 0, result.output
-        written = yaml.safe_load(config_file.read_text())["staging"]
+        written = yaml.safe_load(config_file.read_text(encoding="utf-8"))["staging"]
         assert written["a1000"]["token"] == CANARY_TOKEN
         assert written["titanium_cloud"]["password"] == CANARY_TC_PASSWORD
 
@@ -214,7 +214,7 @@ class TestCreatedProfileIsOwnerOnly:
         assert result.exit_code == 0, result.output
         assert stat.S_IMODE(config_file.stat().st_mode) == 0o600
         # The mode matters because this is what is inside it.
-        body = config_file.read_text()
+        body = config_file.read_text(encoding="utf-8")
         assert "supersecret-token" in body
         assert "supersecret-password" in body
 
@@ -227,7 +227,7 @@ class TestCreatedProfileIsOwnerOnly:
 
         assert result.exit_code == 0, result.output
         assert stat.S_IMODE(config_file.stat().st_mode) == 0o600
-        assert "supersecret-token" in config_file.read_text()
+        assert "supersecret-token" in config_file.read_text(encoding="utf-8")
 
     def test_other_profiles_survive_the_write(self, tmp_path, config_file):
         config_file.write_text(EXISTING)
@@ -235,7 +235,7 @@ class TestCreatedProfileIsOwnerOnly:
         result = _invoke(tmp_path, config_file, ["create-profile", "staging"])
 
         assert result.exit_code == 0, result.output
-        written = yaml.safe_load(config_file.read_text())
+        written = yaml.safe_load(config_file.read_text(encoding="utf-8"))
         assert written["default"]["a1000"]["host"] == "https://original.example"
         assert written["staging"]["a1000"]["token"] == "supersecret-token"
 
@@ -260,14 +260,14 @@ class TestOverwritingAnExistingProfileIsConfirmed:
 
         assert result.exit_code == 0, result.output
         assert "cancelled" in result.output
-        assert config_file.read_text() == before
+        assert config_file.read_text(encoding="utf-8") == before
 
     def test_declining_does_not_leak_the_new_secrets(self, tmp_path, config_file):
         self._with_staging(config_file)
 
         _invoke(tmp_path, config_file, ["create-profile", "staging"], input="n\n")
 
-        assert "supersecret-token" not in config_file.read_text()
+        assert "supersecret-token" not in config_file.read_text(encoding="utf-8")
 
     def test_the_prompt_names_the_profile(self, tmp_path, config_file):
         self._with_staging(config_file)
@@ -284,7 +284,7 @@ class TestOverwritingAnExistingProfileIsConfirmed:
         result = _invoke(tmp_path, config_file, ["create-profile", "staging"], input="y\n")
 
         assert result.exit_code == 0, result.output
-        written = yaml.safe_load(config_file.read_text())
+        written = yaml.safe_load(config_file.read_text(encoding="utf-8"))
         assert written["staging"]["a1000"]["token"] == "supersecret-token"
         assert written["default"]["a1000"]["host"] == "https://original.example"
         assert stat.S_IMODE(config_file.stat().st_mode) == 0o600
@@ -297,4 +297,7 @@ class TestOverwritingAnExistingProfileIsConfirmed:
 
         assert result.exit_code == 0, result.output
         assert "Overwrite" not in result.output
-        assert yaml.safe_load(config_file.read_text())["staging"]["a1000"]["token"] == "old-token"
+        assert (
+            yaml.safe_load(config_file.read_text(encoding="utf-8"))["staging"]["a1000"]["token"]
+            == "old-token"
+        )

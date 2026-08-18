@@ -332,7 +332,7 @@ class TestSaveWritesToTheProfileNotToAFileNamedAfterIt:
         result = _run(["-c", str(config_file), "-p", "prod", "config", "save"])
 
         assert result.exit_code == 0, result.output
-        written = yaml.safe_load(config_file.read_text())
+        written = yaml.safe_load(config_file.read_text(encoding="utf-8"))
         assert written["prod"]["a1000"]["host"] == "https://prod.example"
         assert written["default"]["a1000"]["host"] == "https://default.example"
 
@@ -345,7 +345,10 @@ class TestSaveWritesToTheProfileNotToAFileNamedAfterIt:
         )
 
         assert result.exit_code == 0, result.output
-        assert yaml.safe_load(target.read_text())["prod"]["a1000"]["host"] == "https://prod.example"
+        assert (
+            yaml.safe_load(target.read_text(encoding="utf-8"))["prod"]["a1000"]["host"]
+            == "https://prod.example"
+        )
 
 
 class TestConfigCommandsDeferToTheOutputFormat:

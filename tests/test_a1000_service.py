@@ -568,7 +568,7 @@ class TestDownloads:
             200, content=buffer.getvalue()
         )
         assert samples.download_extracted_files(SHA256, tmp_path) is True
-        assert (tmp_path / "inner.txt").read_text() == "data"
+        assert (tmp_path / "inner.txt").read_text(encoding="utf-8") == "data"
         assert not (tmp_path / "extracted_files.zip").exists()
 
 
@@ -2127,7 +2127,9 @@ class TestTheTemporaryFileIsThisCallsOwn:
 
         write_private_bytes(destination, b"attacker-supplied")
 
-        assert victim.read_text() == "payroll", "the write went through the planted link"
+        assert victim.read_text(encoding="utf-8") == "payroll", (
+            "the write went through the planted link"
+        )
         assert victim.stat().st_mode & 0o777 == 0o644, "the victim file was chmodded 0600"
         assert destination.read_bytes() == b"attacker-supplied"
 
@@ -2156,7 +2158,9 @@ class TestTheTemporaryFileIsThisCallsOwn:
         with pytest.raises(FileExistsError):
             write_private_bytes(destination, b"attacker-supplied")
 
-        assert victim.read_text() == "payroll", "the write went through the planted file"
+        assert victim.read_text(encoding="utf-8") == "payroll", (
+            "the write went through the planted file"
+        )
         assert victim.stat().st_mode & 0o777 == 0o644, "the victim file was chmodded 0600"
         assert not destination.exists()
 
@@ -2539,7 +2543,9 @@ class TestAFailedDownloadLeavesNoTruncatedSample:
                 self._handle.write(data[:7000])
                 raise error
 
-        monkeypatch.setattr(os, "fdopen", lambda fd, mode: _FullDisk(real_fdopen(fd, mode)))
+        monkeypatch.setattr(
+            os, "fdopen", lambda fd, mode, **kwargs: _FullDisk(real_fdopen(fd, mode, **kwargs))
+        )
 
     def test_a_failed_write_leaves_nothing(self, samples, tmp_path, monkeypatch):
         out = tmp_path / "out"

@@ -257,7 +257,7 @@ class TestConfigWritesToTheActiveFile:
         assert not (tmp_path / "configdir" / "config.yaml").exists()
         # save_config rewrites the whole profile, so the file it touched
         # gains the sections a bare host-only file did not have.
-        assert "output:" in target.read_text()
+        assert "output:" in target.read_text(encoding="utf-8")
 
     def test_save_without_path_uses_the_loaded_config_file(self, ctx_obj, tmp_path):
         target = tmp_path / "mine.yaml"
@@ -268,7 +268,7 @@ class TestConfigWritesToTheActiveFile:
 
         assert result.exit_code == 0, result.output
         assert not (tmp_path / "configdir" / "config.yaml").exists()
-        assert "a1000" in target.read_text()
+        assert "a1000" in target.read_text(encoding="utf-8")
 
 
 class TestTheWizardIsNotDefinedInTheCommandModule:
@@ -328,7 +328,7 @@ class TestInitAsksForTheCredentialsAtTheTerminal:
         )
         result = invoke(config, ["init"], ctx_obj, input="\n".join([*answers, ""]))
         assert result.exit_code == 0, result.output
-        saved: dict = yaml.safe_load(target.read_text())["default"]
+        saved: dict = yaml.safe_load(target.read_text(encoding="utf-8"))["default"]
         return result, saved
 
     def test_every_typed_credential_lands_in_its_own_field(self, ctx_obj, tmp_path):
@@ -446,7 +446,7 @@ class TestSaveWritesTheConfigurationNotTheInvocation:
             cli, ["--config", str(config_file), *root_args, "config", "save"]
         )
         assert result.exit_code == 0, result.output
-        section: dict = yaml.safe_load(config_file.read_text())["default"]["output"]
+        section: dict = yaml.safe_load(config_file.read_text(encoding="utf-8"))["default"]["output"]
         return section
 
     def test_a_plain_save_round_trips_the_configured_values(self, tmp_path):

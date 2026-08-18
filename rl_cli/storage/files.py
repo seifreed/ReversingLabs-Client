@@ -66,8 +66,13 @@ def private_writer(path: Path, *, binary: bool = True) -> Iterator[IO[Any]]:
     partial = path.with_name(f"{path.name}.{os.getpid()}.{secrets.token_hex(4)}.part")
     flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | _O_NOFOLLOW
     descriptor = os.open(partial, flags, 0o600)
+    # ``encoding`` is stated, not left to the locale: a config or report
+    # written on Windows would otherwise be cp1252, so a non-ASCII appliance
+    # name or threat family round-trips as mojibake or fails to encode.
+    mode = "wb" if binary else "w"
+    encoding = None if binary else "utf-8"
     try:
-        with os.fdopen(descriptor, "wb" if binary else "w") as handle:
+        with os.fdopen(descriptor, mode, encoding=encoding) as handle:
             if _CAN_FCHMOD:
                 os.fchmod(descriptor, 0o600)
             yield handle
@@ -140,6 +145,6 @@ def read_text_lenient(path: Path) -> str:
     trying to do with it.
     """
     try:
-        return path.read_text()
+        return path.read_text(encoding="utf-8")
     except UnicodeDecodeError:
         return path.read_bytes().decode("latin-1")

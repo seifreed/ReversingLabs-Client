@@ -71,7 +71,7 @@ class ProbeCache:
         read is gone even if writing the replacement then fails.
         """
         try:
-            return self.salt_path.read_text()
+            return self.salt_path.read_text(encoding="utf-8")
         except (OSError, ValueError):
             pass
         salt = secrets.token_hex(16)
@@ -128,7 +128,7 @@ class ProbeCache:
         if not self.path.exists():
             return None
         try:
-            with self.path.open() as f:
+            with self.path.open(encoding="utf-8") as f:
                 data = json.load(f)
             if data.get("fingerprint") != self.fingerprint():
                 return None

@@ -58,7 +58,7 @@ def _shipped_placeholders(name: str) -> set[str]:
     which ``is_real_credential`` counts as a real one, and a copied example
     would spend a probe on it and cache the rejection for a day.
     """
-    return set(re.findall(r"your_[a-z0-9_]+", (_REPO_ROOT / name).read_text()))
+    return set(re.findall(r"your_[a-z0-9_]+", (_REPO_ROOT / name).read_text(encoding="utf-8")))
 
 
 BY_FILE = {name: _shipped_placeholders(name) for name in _EXAMPLE_FILES}
@@ -114,7 +114,7 @@ def _imported_names(module) -> set[str]:
     every module in the package is already in ``sys.modules``, so nothing
     about what one of them reaches for can be observed from there.
     """
-    tree = ast.parse(Path(module.__file__).read_text())
+    tree = ast.parse(Path(module.__file__).read_text(encoding="utf-8"))
     imported: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
@@ -622,7 +622,7 @@ class TestOnlyMeasuredFactsAreReported:
 
         checker.check_all()
 
-        written = checker.cache.path.read_text()
+        written = checker.cache.path.read_text(encoding="utf-8")
         assert "test_results" not in written
         assert "available_methods" not in written
 
@@ -829,7 +829,7 @@ class TestCheckAllAndCache:
         monkeypatch.setattr(A1000MetadataService, "test_connection", lambda self: True)
         checker.check_all()
 
-        stored = json.loads(checker.cache.path.read_text())
+        stored = json.loads(checker.cache.path.read_text(encoding="utf-8"))
         just_inside = datetime.now() - checker.cache.duration + timedelta(minutes=1)
         checker.cache.path.write_text(json.dumps({**stored, "timestamp": just_inside.isoformat()}))
         assert checker.cache.load() is not None
@@ -855,7 +855,7 @@ class TestCheckAllAndCache:
         monkeypatch.setattr(A1000MetadataService, "test_connection", lambda self: True)
         checker.check_all()
 
-        stored = json.loads(checker.cache.path.read_text())
+        stored = json.loads(checker.cache.path.read_text(encoding="utf-8"))
         stamped_ahead = datetime.now() + ahead
         checker.cache.path.write_text(
             json.dumps({**stored, "timestamp": stamped_ahead.isoformat()})
@@ -1234,7 +1234,7 @@ class TestCacheIsPerConfiguration:
         checker = self._checker(settings, "https://real.example", "super-secret-token")
         self._cache_a_result(checker, monkeypatch, available=True)
 
-        assert "super-secret-token" not in checker.cache.path.read_text()
+        assert "super-secret-token" not in checker.cache.path.read_text(encoding="utf-8")
 
 
 def _unsalted_fingerprint(settings) -> str:
@@ -1290,7 +1290,7 @@ class TestTheCacheIsNotReadableByOtherUsers:
 
     def test_the_fingerprint_does_not_confirm_a_guessed_credential(self, settings, cached):
         """Offline oracle: hash a guess, compare, learn whether it was right."""
-        stored = json.loads(cached.path.read_text())["fingerprint"]
+        stored = json.loads(cached.path.read_text(encoding="utf-8"))["fingerprint"]
 
         assert stored != _unsalted_fingerprint(settings)
 
@@ -1341,12 +1341,12 @@ class TestTheSaltIsStablePerInstall:
         settings.a1000.token = "real-token"
         monkeypatch.setattr(A1000MetadataService, "test_connection", lambda self: True)
         checker.check_all()
-        before = checker.cache.salt_path.read_text()
+        before = checker.cache.salt_path.read_text(encoding="utf-8")
 
         checker.clear_cache()
         checker.check_all()
 
-        assert checker.cache.salt_path.read_text() == before
+        assert checker.cache.salt_path.read_text(encoding="utf-8") == before
 
 
 class TestCacheHitAndFreshProbeAgree:
@@ -1380,7 +1380,7 @@ class TestHostileProbeMessage:
         monkeypatch.setattr(A1000MetadataService, "test_connection", lambda self: True)
 
         checker.check_all()
-        stored = json.loads(checker.cache.path.read_text())
+        stored = json.loads(checker.cache.path.read_text(encoding="utf-8"))
 
         assert "\x1b" not in stored["titanium_cloud"]["message"]
         assert "\x07" not in stored["titanium_cloud"]["message"]
@@ -1398,7 +1398,7 @@ class TestUnreadableSalt:
         # UnicodeDecodeError escaped _salt into fingerprint, where load()
         # and save() swallowed it: the cache was never read or written.
         assert cache.fingerprint()
-        assert cache.salt_path.read_text() != ""
+        assert cache.salt_path.read_text(encoding="utf-8") != ""
 
         cache.save(_a_probe_run())
         assert cache.load() is not None

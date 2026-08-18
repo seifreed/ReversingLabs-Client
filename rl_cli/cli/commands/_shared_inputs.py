@@ -80,7 +80,7 @@ def required_hashes(
         # "Unexpected error", which tells the analyst to file a bug about
         # their own typo. Named here as the wrong file it is.
         try:
-            text = hash_file.read_text()
+            text = hash_file.read_text(encoding="utf-8")
         except UnicodeDecodeError as exc:
             raise click.UsageError(
                 f"--hash-file {hash_file} is not a UTF-8 text file (expected one hash per line)"

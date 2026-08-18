@@ -59,6 +59,7 @@ class TestAnArchiveIsUnpackedWhole:
         assert (out / "a.bin").read_bytes() == b"MZ"
         assert (out / "sub" / "b.bin").read_bytes() == b"ZM"
 
+    @pytest.mark.posix_only
     def test_the_unpacked_files_are_owner_only(self, out):
         unpack_private(_zip_bytes({"sub/a.bin": b"MZ"}), out, _silent)
 

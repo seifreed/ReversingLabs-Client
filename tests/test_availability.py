@@ -1276,12 +1276,15 @@ class TestTheCacheIsNotReadableByOtherUsers:
         checker.check_all()
         return checker.cache
 
+    @pytest.mark.posix_only
     def test_the_cache_file_is_owner_only(self, cached):
         assert stat.S_IMODE(cached.path.stat().st_mode) == 0o600
 
+    @pytest.mark.posix_only
     def test_the_cache_directory_is_owner_only(self, cached):
         assert stat.S_IMODE(cached.path.parent.stat().st_mode) == 0o700
 
+    @pytest.mark.posix_only
     def test_the_salt_is_owner_only(self, cached):
         assert stat.S_IMODE(cached.salt_path.stat().st_mode) == 0o600
 

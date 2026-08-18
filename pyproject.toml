@@ -190,6 +190,7 @@ addopts = "--cov=rl_cli --cov-branch --cov-report=term-missing --cov-fail-under=
 # Registered here is what `--strict-markers` checks against.
 markers = [
     "real_availability_probe: give this test the real APIAvailabilityChecker, not conftest's stub",
+    "posix_only: assert POSIX file-mode / hard-link / symlink semantics; skipped off POSIX (Windows)",
 ]
 
 # A DeprecationWarning from click, pydantic or the vendored SDK is the

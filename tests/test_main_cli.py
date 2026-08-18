@@ -776,12 +776,14 @@ class TestSavedReportsGetTheSameCareAsSamples:
         )
         return result, target
 
+    @pytest.mark.posix_only
     def test_a_saved_report_is_owner_only(self, monkeypatch, tmp_path):
         result, target = self._saved(monkeypatch, tmp_path)
 
         assert result.exit_code == 0, result.output
         assert stat.S_IMODE(target.stat().st_mode) == 0o600
 
+    @pytest.mark.posix_only
     def test_a_saved_dynamic_report_is_owner_only(self, monkeypatch, tmp_path):
         monkeypatch.setattr(
             A1000ReportService, "download_dynamic_report", lambda self, h, fmt="pdf": b"%PDF-1.4"
@@ -803,6 +805,7 @@ class TestSavedReportsGetTheSameCareAsSamples:
         assert result.exit_code == 1
         assert not target.exists()
 
+    @pytest.mark.posix_only
     def test_a_symlink_at_the_destination_is_not_followed(self, monkeypatch, tmp_path):
         """--output-file pointed at a symlink wrote the report through it,
         and a refused write must leave no ``.part`` wearing a real name.

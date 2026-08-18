@@ -272,6 +272,7 @@ class TestAnExtractionThatFetchedNothingLeavesNoDirectoryBehind:
         assert result.exit_code == 0, result.output
         assert (target / f"extracted_{SHA256[:16]}" / "carved.bin").read_bytes() == b"MZ"
 
+    @pytest.mark.posix_only
     def test_the_directory_it_carves_out_for_the_files_is_owner_only(
         self, ctx_obj, monkeypatch, tmp_path
     ):

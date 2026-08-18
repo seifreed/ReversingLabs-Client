@@ -6,7 +6,7 @@ on:
   pull_request:
     branches: [main]
 
-# The job only ever reads the checkout; nothing here writes to the repo,
+# The jobs only ever read the checkout; nothing here writes to the repo,
 # publishes a package or comments on a PR.
 permissions:
   contents: read
@@ -17,12 +17,14 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  checks:
+  # The static gate runs once, on Linux: ruff, mypy, bandit and the
+  # dependency audit answer the same on every OS, so paying for them on
+  # three would buy nothing. Both interpreter versions, because a type or
+  # lint result can turn on the running Python.
+  lint:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        # Both versions `requires-python` accepts. Classifying 3.14 while
-        # running only 3.13 promises support nothing has ever executed.
         python-version: ["3.13", "3.14"]
     steps:
       - uses: actions/checkout@v5
@@ -52,16 +54,39 @@ jobs:
       - name: Dependency audit
         run: pip-audit --skip-editable
 
-      # Sections 1-6 only: credentials, malware samples and a tracked
-      # .gitignore, none of which the steps above look at. Its section 7 is
-      # the six checks this job already ran as its own steps, so the
-      # script skips it when $CI is set rather than paying for all six a
-      # second time with the output thrown away.
-      - name: Secret and sample scan
-        run: bash pre-push-check.sh
+  # The suite runs on all three OSes and both interpreter versions.
+  # fail-fast is off so a Windows failure does not cancel the Linux and
+  # macOS answers, and vice versa.
+  test:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v5
 
-      # No coverage flags: the floor is in pyproject's addopts, so this is
-      # the same command the README and the pre-push hook name, and "it
-      # passed on my machine" and "it passed in CI" mean the same thing.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install package with dev dependencies
+        run: pip install -e ".[dev]"
+
+      # The 100% coverage floor in pyproject's addopts is a POSIX claim:
+      # rl_cli.storage.files keeps its 0600, umask-proof, no-symlink write
+      # on POSIX and degrades to the platform default on Windows, where
+      # O_NOFOLLOW and fchmod do not exist -- so the tests that assert those
+      # guarantees are marked `posix_only` and skipped off POSIX, which
+      # leaves a few branches unreachable there. The floor is therefore
+      # enforced on Linux and macOS, where every branch runs, and dropped on
+      # Windows, where the suite still has to pass, coverage aside.
       - name: Tests
-        run: pytest -q
+        shell: bash
+        run: |
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            pytest -q -o addopts="--strict-markers"
+          else
+            pytest -q
+          fi

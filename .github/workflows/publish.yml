@@ -1,0 +1,63 @@
+name: Publish to PyPI
+
+# Publishes on a GitHub Release. Trusted Publishing (OIDC) means no API
+# token lives in the repo or its secrets: PyPI is configured to trust this
+# repository's `publish` workflow running in the `pypi` environment, and the
+# short-lived OIDC token minted below is what it authenticates.
+on:
+  release:
+    types: [published]
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build sdist and wheel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.13"
+
+      - name: Build
+        run: |
+          python -m pip install --upgrade build
+          python -m build
+
+      # Refuse a distribution PyPI would reject before asking it to, and
+      # keep the two files for the publish job to hand over unchanged.
+      - name: Check metadata
+        run: |
+          python -m pip install --upgrade twine
+          python -m twine check dist/*
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+  publish:
+    name: Publish to PyPI
+    needs: build
+    runs-on: ubuntu-latest
+    # The publisher on PyPI is bound to this environment, so a release can
+    # only be cut through it -- and a required reviewer on the environment,
+    # if one is set, gates every upload.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/rl-cli
+    permissions:
+      # The one privilege Trusted Publishing needs: mint the OIDC token PyPI
+      # verifies. No password, no long-lived token.
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish
+        uses: pypa/gh-action-pypi-publish@release/v1

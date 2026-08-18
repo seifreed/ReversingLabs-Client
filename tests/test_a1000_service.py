@@ -490,12 +490,14 @@ class TestDownloads:
         assert samples.download_sample(SHA256, out) is True
         assert out.read_bytes() == b"payload"
 
+    @pytest.mark.posix_only
     def test_downloaded_sample_is_never_world_readable(self, samples, tmp_path):
         samples.client.download_sample.return_value = sdk_response(200, content=b"MZ malware")
         out = tmp_path / "sample.malware"
         samples.download_sample(SHA256, out)
         assert stat.S_IMODE(out.stat().st_mode) == 0o600
 
+    @pytest.mark.posix_only
     def test_extracted_archive_is_never_world_readable(self, samples, tmp_path, monkeypatch):
         buffer = io.BytesIO()
         with zipfile.ZipFile(buffer, "w") as zf:
@@ -2020,6 +2022,7 @@ class TestExtractedFilePermissions:
                 zf.writestr(name, content)
         return sdk_response(200, content=buffer.getvalue())
 
+    @pytest.mark.posix_only
     def test_every_extracted_member_is_owner_only(self, samples, tmp_path):
         samples.client.download_extracted_files.return_value = self._archive_response(
             {"infected/alpha.bin": "MZ", "infected/nested/beta.bin": "MZ"}
@@ -2090,6 +2093,7 @@ class TestBatchDeleteUsesTheBulkEndpoint:
 class TestOverwritingAnExistingSamplePath:
     """O_CREAT leaves an existing file's mode alone; the sample is still malware."""
 
+    @pytest.mark.posix_only
     def test_download_tightens_a_preexisting_world_readable_file(self, tmp_path):
         target = tmp_path / "sample.bin"
         target.write_bytes(b"stale")
@@ -2104,6 +2108,7 @@ class TestOverwritingAnExistingSamplePath:
 class TestTheTemporaryFileIsThisCallsOwn:
     """A fixed ``<name>.part`` was a file anyone could get there first."""
 
+    @pytest.mark.posix_only
     def test_a_hard_link_planted_at_the_temporary_is_not_written_through(self, tmp_path):
         """O_NOFOLLOW refuses a symlink and says nothing about a hard link.
 
@@ -2126,6 +2131,7 @@ class TestTheTemporaryFileIsThisCallsOwn:
         assert victim.stat().st_mode & 0o777 == 0o644, "the victim file was chmodded 0600"
         assert destination.read_bytes() == b"attacker-supplied"
 
+    @pytest.mark.posix_only
     def test_a_file_already_at_the_temporary_is_never_written_through(self, tmp_path, monkeypatch):
         """``O_EXCL`` is the half of this guard the unpredictable name hid.
 
@@ -2181,6 +2187,22 @@ class TestTheTemporaryFileIsThisCallsOwn:
 
         assert modes == [0o600]
 
+    def test_a_platform_without_fchmod_still_writes_the_file(self, tmp_path, monkeypatch):
+        """Windows ships no ``os.fchmod``; the write must still land.
+
+        On POSIX ``fchmod`` forces 0600 past the umask, but where it is
+        absent the file is still created 0600 by ``os.open`` and its bytes
+        still land -- which is what the guard around the ``fchmod`` call has
+        to preserve. Not ``posix_only``: it is exactly the Windows branch,
+        forced here so the POSIX coverage run exercises it too.
+        """
+        monkeypatch.setattr("rl_cli.storage.files._CAN_FCHMOD", False)
+        destination = tmp_path / "sample.bin"
+
+        write_private_bytes(destination, b"MZ")
+
+        assert destination.read_bytes() == b"MZ"
+
     def test_two_writers_to_one_destination_do_not_share_a_temporary(self, tmp_path):
         """The bug ``download_extracted_files`` grew a staging directory for.
 
@@ -2210,6 +2232,7 @@ class TestTheTemporaryFileIsThisCallsOwn:
 class TestPromotedDirectories:
     """The files are 0600; the carved-out path names were 0755."""
 
+    @pytest.mark.posix_only
     def test_the_unpacked_tree_lands_owner_only(self, samples, tmp_path):
         samples.client.download_extracted_files.return_value = sdk_response(
             200, content=_zip_bytes({"a/b/payload.bin": b"MZ"})

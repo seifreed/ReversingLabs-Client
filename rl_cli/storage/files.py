@@ -20,6 +20,16 @@ from contextlib import AbstractContextManager, contextmanager
 from pathlib import Path
 from typing import IO, Any, Literal, overload
 
+# ``O_NOFOLLOW`` and ``fchmod`` are POSIX, absent on Windows. Where they
+# are missing the write degrades to what that platform enforces instead --
+# ``os.open`` still refuses to create over an existing name via ``O_EXCL``,
+# and a file made under the user's profile is ACL-scoped to that user --
+# while every POSIX target keeps the umask-proof 0600 and the no-symlink
+# open below. Resolved once, so the per-write path holds values, not a
+# platform check.
+_O_NOFOLLOW = getattr(os, "O_NOFOLLOW", 0)
+_CAN_FCHMOD = hasattr(os, "fchmod")
+
 
 # ``binary`` decides which of the two file protocols the caller gets, and
 # saying so in the overloads is what lets a caller hand the handle to
@@ -54,11 +64,12 @@ def private_writer(path: Path, *, binary: bool = True) -> Iterator[IO[Any]]:
     the second renaming it away under the first.
     """
     partial = path.with_name(f"{path.name}.{os.getpid()}.{secrets.token_hex(4)}.part")
-    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | _O_NOFOLLOW
     descriptor = os.open(partial, flags, 0o600)
     try:
         with os.fdopen(descriptor, "wb" if binary else "w") as handle:
-            os.fchmod(descriptor, 0o600)
+            if _CAN_FCHMOD:
+                os.fchmod(descriptor, 0o600)
             yield handle
         # Path.replace does not follow a symlink at the destination - it
         # replaces the link itself - so this guards nothing about where

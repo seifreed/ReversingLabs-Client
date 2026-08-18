@@ -158,6 +158,7 @@ class TestProxyUserinfoIsHiddenWithOrWithoutAScheme:
 class TestTheWritersStillStoreTheRealValues:
     """Redacting for display must not redact what is written back."""
 
+    @pytest.mark.posix_only
     def test_save_round_trips_the_real_secrets(self, tmp_path, config_file):
         obj = _ctx_obj(tmp_path, config_file)
         obj.settings.titanium_cloud.password = CANARY_TC_PASSWORD
@@ -206,6 +207,7 @@ class TestCreateProfileSaysWhatItStores:
 class TestCreatedProfileIsOwnerOnly:
     """The file holds an API token in plaintext; the default umask does not."""
 
+    @pytest.mark.posix_only
     def test_new_file_is_owner_only(self, tmp_path, config_file):
         result = _invoke(tmp_path, config_file, ["create-profile", "staging"])
 
@@ -216,6 +218,7 @@ class TestCreatedProfileIsOwnerOnly:
         assert "supersecret-token" in body
         assert "supersecret-password" in body
 
+    @pytest.mark.posix_only
     def test_existing_world_readable_file_is_tightened(self, tmp_path, config_file):
         config_file.write_text(EXISTING)
         config_file.chmod(0o644)
@@ -274,6 +277,7 @@ class TestOverwritingAnExistingProfileIsConfirmed:
         assert "staging" in result.output
         assert "Overwrite" in result.output
 
+    @pytest.mark.posix_only
     def test_confirming_replaces_the_profile(self, tmp_path, config_file):
         self._with_staging(config_file)
 

@@ -145,6 +145,26 @@ def pytest_configure(config: pytest.Config) -> None:
             cov_plugin.options.cov_fail_under = 0
 
 
+def pytest_collection_modifyitems(config: pytest.Config, items: list[pytest.Item]) -> None:
+    """Skip the POSIX file-security tests where those semantics do not exist.
+
+    ``rl_cli.storage.files`` keeps its umask-proof 0600, no-symlink write on
+    POSIX and degrades to the platform default on Windows, where
+    ``O_NOFOLLOW`` and ``fchmod`` are absent. The tests that assert the POSIX
+    guarantees -- exact 0600/0700 modes, hard-link and symlink attacks -- are
+    marked ``posix_only`` and skipped off POSIX rather than failing on it.
+    The whole-suite 100% coverage floor is therefore enforced on a POSIX
+    runner, where every branch is reachable; ``ci.yml`` runs Windows without
+    the floor.
+    """
+    if os.name == "posix":
+        return
+    skip = pytest.mark.skip(reason="POSIX file-mode/link semantics unavailable on this platform")
+    for item in items:
+        if "posix_only" in item.keywords:
+            item.add_marker(skip)
+
+
 @pytest.fixture(autouse=True)
 def hermetic(request, tmp_path, monkeypatch):
     """Isolate configuration discovery, the cache and the API probe.

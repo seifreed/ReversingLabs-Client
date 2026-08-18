@@ -398,6 +398,7 @@ class TestEnvironmentPrecedence:
 class TestSavedConfigPermissions:
     """Config files hold plaintext tokens; the default umask makes them world-readable."""
 
+    @pytest.mark.posix_only
     def test_new_file_is_owner_only(self, tmp_path):
         settings = _settings(tmp_path, config_file=tmp_path / "missing.yaml")
         settings.a1000.token = "supersecret"
@@ -407,6 +408,7 @@ class TestSavedConfigPermissions:
         assert stat.S_IMODE(target.stat().st_mode) == 0o600
         assert "supersecret" in target.read_text()
 
+    @pytest.mark.posix_only
     def test_existing_world_readable_file_is_tightened(self, tmp_path):
         target = tmp_path / "saved.yaml"
         target.write_text("default: {}\n")
@@ -626,12 +628,14 @@ class TestTheSectionListComesFromTheModel:
 
 
 class TestTheConfigFileIsWrittenAsPrivatelyAsASample:
+    @pytest.mark.posix_only
     def test_it_lands_owner_only(self, tmp_path):
         path = tmp_path / "config.yaml"
         write_private_yaml(path, {"default": {"a1000": {"token": "secret"}}})
         assert stat.S_IMODE(path.stat().st_mode) == 0o600
         assert yaml.safe_load(path.read_text())["default"]["a1000"]["token"] == "secret"
 
+    @pytest.mark.posix_only
     def test_it_writes_through_a_symlink_to_the_real_file(self, tmp_path):
         """Pointing the config at a dotfiles checkout is how people keep it.
 

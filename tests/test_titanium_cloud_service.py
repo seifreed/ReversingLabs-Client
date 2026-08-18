@@ -1924,6 +1924,7 @@ class TestReputationAnswersOneShapeWhateverTheBatchSize:
 class TestSampleDownload:
     """The wrapper that writes live malware, and what it refuses to write."""
 
+    @pytest.mark.posix_only
     def test_the_sample_is_written_owner_only(self, service, tmp_path):
         api = _api_for(service, "_file_download")
         api.download_sample.return_value = sdk_response(content=b"MZ malware")
@@ -1955,6 +1956,7 @@ class TestSampleDownload:
         reported = service.output.error.call_args[0][0]
         assert "HTTP 404" in reported and "Sample not found" in reported
 
+    @pytest.mark.posix_only
     def test_a_symlink_at_the_destination_is_refused(self, service, tmp_path):
         """The sample must not be written through a link the analyst left."""
         api = _api_for(service, "_file_download")

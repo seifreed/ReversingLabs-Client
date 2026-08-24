@@ -48,7 +48,7 @@ jobs:
     # if one is set, gates every upload.
     environment:
       name: pypi
-      url: https://pypi.org/p/rl-cli
+      url: https://pypi.org/p/reversinglabs-cli
     permissions:
       # The one privilege Trusted Publishing needs: mint the OIDC token PyPI
       # verifies. No password, no long-lived token.

@@ -9,6 +9,7 @@
 </p>
 
 <p align="center">
+  <a href="https://github.com/seifreed/ReversingLabs-Client/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/seifreed/ReversingLabs-Client/ci.yml?branch=main&style=flat-square&label=CI" alt="CI Status"></a>
   <a href="https://www.python.org/"><img src="https://img.shields.io/badge/python-3.13%20%7C%203.14-blue?style=flat-square&logo=python&logoColor=white" alt="Python Versions"></a>
   <a href="https://github.com/seifreed/ReversingLabs-Client/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-green?style=flat-square" alt="License"></a>
   <a href="https://github.com/seifreed/ReversingLabs-Client"><img src="https://img.shields.io/badge/A1000%20SDK%20methods-54%20of%2067-brightgreen?style=flat-square" alt="A1000 SDK Coverage"></a>
